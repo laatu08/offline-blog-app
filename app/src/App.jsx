@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
-import { loadArticlesOfflineFirst, searchByTitle } from "./db/articles";
+import {
+  getLastUpdatedTime,
+  isCacheStale,
+  loadArticlesOfflineFirst,
+  searchByTitle,
+} from "./db/articles";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 
 export default function App() {
   const [articles, setArticles] = useState([]);
   const [query, setQuery] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [stale, setStale] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const online = useOnlineStatus();
 
@@ -15,6 +23,11 @@ export default function App() {
     }
     load();
   }, [online]);
+
+  useEffect(() => {
+    setStale(isCacheStale(articles));
+    setLastUpdated(getLastUpdatedTime(articles));
+  }, [articles]);
 
   async function handleSearch(e) {
     const value = e.target.value;
@@ -28,6 +41,20 @@ export default function App() {
 
     const results = await searchByTitle(value);
     setArticles(results);
+  }
+
+  async function handleRefresh() {
+    if (!online) return;
+
+    setRefreshing(true);
+    try {
+      const fresh = await refreshArticles();
+      setArticles(fresh);
+      setLastUpdated(Date.now());
+      setStale(false);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   return (
@@ -62,14 +89,36 @@ export default function App() {
                      text-sm"
         />
 
+        {stale && (
+          <div
+            className="mb-4 flex items-center justify-between rounded-lg border 
+                  border-yellow-300 bg-yellow-50 px-4 py-3 text-sm"
+          >
+            <span className="text-yellow-800">You’re viewing cached data</span>
+
+            <button
+              onClick={handleRefresh}
+              disabled={!online || refreshing}
+              className="rounded-md bg-yellow-600 px-3 py-1 text-white text-xs
+                 disabled:opacity-50"
+            >
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
+        )}
+
+        {lastUpdated && (
+          <p className="mb-4 text-xs text-slate-500">
+            Last updated: {new Date(lastUpdated).toLocaleTimeString()}
+          </p>
+        )}
+
         {/* Empty State */}
         {articles.length === 0 && (
           <div className="text-center py-12 text-slate-500">
             <p className="text-sm">No articles available</p>
             {!online && (
-              <p className="mt-1 text-xs">
-                Go online once to cache content
-              </p>
+              <p className="mt-1 text-xs">Go online once to cache content</p>
             )}
           </div>
         )}
@@ -89,9 +138,7 @@ export default function App() {
                 {article.body}
               </p>
 
-              <div className="text-xs text-slate-500">
-                {article.author}
-              </div>
+              <div className="text-xs text-slate-500">{article.author}</div>
             </article>
           ))}
         </div>

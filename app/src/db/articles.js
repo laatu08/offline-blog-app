@@ -1,7 +1,8 @@
 import { fetchArticles } from "../api/blogApi";
 import { dbPromise } from "./db";
 
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+// const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+const CACHE_TTL = 5000; 
 
 export async function getAllArticles() {
     const db=await dbPromise;
@@ -31,9 +32,7 @@ export function isArticleCacheValid(article) {
 export async function loadArticlesOfflineFirst(isOnline) {
     const cached=await getAllArticles();
 
-    const validCached=cached.filter(isArticleCacheValid);
-
-    let finalArticles=validCached;
+    let finalArticles=cached;
 
     if(isOnline){
         try{
@@ -70,4 +69,26 @@ export async function searchByTitle(query) {
 export async function searchByAuthor(author) {
   const db = await dbPromise;
   return db.getAllFromIndex('articles', 'author', author);
+}
+
+
+export function isCacheStale(articles) {
+  if (!articles.length) return true;
+
+  const oldest = Math.min(...articles.map(a => a.cachedAt));
+  return Date.now() - oldest > CACHE_TTL;
+}
+
+
+export function getLastUpdatedTime(articles) {
+  if (!articles.length) return null;
+  return Math.max(...articles.map(a => a.cachedAt));
+}
+
+
+
+export async function refreshArticles() {
+  const fresh = await fetchArticles();
+  await saveArticles(fresh);
+  return fresh;
 }
