@@ -1,8 +1,11 @@
-const LIST_API = "https://dev.to/api/articles?per_page=20";
+const PER_PAGE = 20;
 const ARTICLE_API = "https://dev.to/api/articles";
 
-export async function fetchArticles() {
-  const res = await fetch(LIST_API);
+export async function fetchArticles(page = 1) {
+  const res = await fetch(
+    `${ARTICLE_API}?page=${page}&per_page=${PER_PAGE}`
+  );
+
   if (!res.ok) throw new Error("Failed to fetch articles");
 
   const data = await res.json();
@@ -29,7 +32,7 @@ export async function fetchFullArticle(id) {
     id: article.id,
     title: article.title,
     preview: article.description,
-    bodyHtml: article.body_html, // ✅ NOW IT EXISTS
+    bodyHtml: article.body_html,
     author: article.user?.name || "Unknown",
     publishedAt: article.published_at,
     cachedAt: Date.now(),

@@ -118,3 +118,11 @@ export async function getOfflineReadableArticles() {
   const all = await getAllArticles();
   return all.filter(isFullyCached);
 }
+
+export async function loadNextPage(page) {
+  const newArticles = await fetchArticles(page);
+  await saveArticles(newArticles);
+
+  // Always return full merged list from IndexedDB
+  return getAllArticles();
+}

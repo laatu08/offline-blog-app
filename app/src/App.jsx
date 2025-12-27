@@ -4,6 +4,7 @@ import {
   getOfflineReadableArticles,
   isCacheStale,
   loadArticlesOfflineFirst,
+  loadNextPage,
   searchByTitle,
 } from "./db/articles";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
@@ -17,12 +18,17 @@ export default function App() {
   const [stale, setStale] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   const online = useOnlineStatus();
 
   async function loadVisibleArticles(online) {
     if (online) {
       return loadArticlesOfflineFirst(true);
+      setPage(1);
+      setHasMore(true);
     } else {
       return getOfflineReadableArticles();
     }
@@ -112,6 +118,27 @@ export default function App() {
       </div>
     );
   }
+
+  async function handleShowMore() {
+  if (!online || loadingMore || !hasMore) return;
+
+  setLoadingMore(true);
+  try {
+    const nextPage = page + 1;
+    const data = await loadNextPage(nextPage);
+
+    // dev.to returns empty array when no more articles
+    if (data.length === articles.length) {
+      setHasMore(false);
+    }
+
+    setArticles(data);
+    setPage(nextPage);
+  } finally {
+    setLoadingMore(false);
+  }
+}
+
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -229,6 +256,20 @@ export default function App() {
                 <div className="text-xs text-slate-500">{article.author}</div>
               </article>
             ))}
+
+            {online && hasMore && (
+  <div className="mt-6 flex justify-center">
+    <button
+      onClick={handleShowMore}
+      disabled={loadingMore}
+      className="rounded-lg border border-slate-300 px-4 py-2 text-sm
+                 hover:bg-slate-100 disabled:opacity-50"
+    >
+      {loadingMore ? "Loading…" : "Show more"}
+    </button>
+  </div>
+)}
+
           </div>
         </main>
       )}
