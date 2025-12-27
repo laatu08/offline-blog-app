@@ -1,20 +1,37 @@
-const API_URL = 'https://jsonplaceholder.typicode.com/posts';
+const LIST_API = "https://dev.to/api/articles?per_page=20";
+const ARTICLE_API = "https://dev.to/api/articles";
 
 export async function fetchArticles() {
-    const res = await fetch(API_URL);
+  const res = await fetch(LIST_API);
+  if (!res.ok) throw new Error("Failed to fetch articles");
 
-    if (!res.ok) {
-        throw new Error('Failed to fetch articles');
-    }
+  const data = await res.json();
 
-    const data = await res.json();
+  return data.map(article => ({
+    id: article.id,
+    title: article.title,
+    preview: article.description || "",
+    author: article.user?.name || "Unknown",
+    coverImage: article.cover_image,
+    publishedAt: article.published_at,
+    cachedAt: Date.now(),
+    hasFullContent: false
+  }));
+}
 
-    return data.slice(0, 20).map(post => ({
-        id: post.id,
-        title: post.title,
-        body: post.body,
-        author: `User ${post.userId}`,
-        updatedAt: new Date().toISOString(),
-        cachedAt: Date.now()
-    }));
+export async function fetchFullArticle(id) {
+  const res = await fetch(`${ARTICLE_API}/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch article");
+
+  const article = await res.json();
+
+  return {
+    id: article.id,
+    title: article.title,
+    bodyHtml: article.body_html, // ✅ NOW IT EXISTS
+    author: article.user?.name || "Unknown",
+    publishedAt: article.published_at,
+    cachedAt: Date.now(),
+    hasFullContent: true
+  };
 }
