@@ -1,30 +1,36 @@
-import { useEffect } from 'react';
-import { saveArticles, getAllArticles } from './db/articles';
+import { useEffect, useState } from 'react';
+import { loadArticlesOfflineFirst } from './db/articles';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 export default function App() {
-  useEffect(() => {
-    async function testDB() {
-      await saveArticles([
-        {
-          id: 1,
-          title: 'Offline First',
-          body: 'IndexedDB is the source of truth',
-          author: 'You',
-          updatedAt: new Date().toISOString(),
-          cachedAt: Date.now()
-        }
-      ]);
+  const [articles, setArticles] = useState([]);
+  const online = useOnlineStatus();
 
-      const articles = await getAllArticles();
-      console.log('IndexedDB Articles:', articles);
+  useEffect(() => {
+    async function load() {
+      const data = await loadArticlesOfflineFirst(online);
+      setArticles(data);
     }
 
-    testDB();
-  }, []);
+    load();
+  }, [online]);
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Offline Blog Reader</h1>
+      <p>Status: {online ? 'Online' : 'Offline'}</p>
+
+      {articles.length === 0 && !online && (
+        <p>No cached articles available</p>
+      )}
+
+      {articles.map(article => (
+        <article key={article.id} style={{ marginBottom: 20 }}>
+          <h3>{article.title}</h3>
+          <p>{article.body}</p>
+          <small>{article.author}</small>
+        </article>
+      ))}
     </div>
   );
 }
