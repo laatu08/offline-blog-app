@@ -26,9 +26,9 @@ export default function App() {
 
   async function loadVisibleArticles(online) {
     if (online) {
-      return loadArticlesOfflineFirst(true);
       setPage(1);
       setHasMore(true);
+      return loadArticlesOfflineFirst(true);
     } else {
       return getOfflineReadableArticles();
     }
@@ -102,7 +102,7 @@ export default function App() {
         {/* FULL BLOG CONTENT WITH IMAGES */}
         {article.bodyHtml ? (
           <div
-            className="prose prose-slate max-w-none"
+            className="reader"
             dangerouslySetInnerHTML={{ __html: article.bodyHtml }}
           />
         ) : (
@@ -120,25 +120,24 @@ export default function App() {
   }
 
   async function handleShowMore() {
-  if (!online || loadingMore || !hasMore) return;
+    if (!online || loadingMore || !hasMore) return;
 
-  setLoadingMore(true);
-  try {
-    const nextPage = page + 1;
-    const data = await loadNextPage(nextPage);
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const data = await loadNextPage(nextPage);
 
-    // dev.to returns empty array when no more articles
-    if (data.length === articles.length) {
-      setHasMore(false);
+      // dev.to returns empty array when no more articles
+      if (data.length === articles.length) {
+        setHasMore(false);
+      }
+
+      setArticles(data);
+      setPage(nextPage);
+    } finally {
+      setLoadingMore(false);
     }
-
-    setArticles(data);
-    setPage(nextPage);
-  } finally {
-    setLoadingMore(false);
   }
-}
-
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -258,18 +257,17 @@ export default function App() {
             ))}
 
             {online && hasMore && (
-  <div className="mt-6 flex justify-center">
-    <button
-      onClick={handleShowMore}
-      disabled={loadingMore}
-      className="rounded-lg border border-slate-300 px-4 py-2 text-sm
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleShowMore}
+                  disabled={loadingMore}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm
                  hover:bg-slate-100 disabled:opacity-50"
-    >
-      {loadingMore ? "Loading…" : "Show more"}
-    </button>
-  </div>
-)}
-
+                >
+                  {loadingMore ? "Loading…" : "Show more"}
+                </button>
+              </div>
+            )}
           </div>
         </main>
       )}
