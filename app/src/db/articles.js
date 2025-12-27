@@ -1,8 +1,8 @@
 import { fetchArticles } from "../api/blogApi";
 import { dbPromise } from "./db";
 
-// const CACHE_TTL = 1000 * 60 * 60; // 1 hour
-const CACHE_TTL = 5000; 
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+// const CACHE_TTL = 5000; 
 
 export async function getAllArticles() {
     const db=await dbPromise;
@@ -10,15 +10,31 @@ export async function getAllArticles() {
 }
 
 export async function saveArticles(articles) {
-    const db=await dbPromise;
-    const tx=db.transaction('articles','readwrite');
+  const db = await dbPromise;
+  const tx = db.transaction("articles", "readwrite");
+  const store = tx.store;
 
-    for(const article of articles){
-        tx.store.put(article);
-    }
+  for (const article of articles) {
+    const existing = await store.get(article.id);
 
-    await tx.done;
+    // Merge instead of overwrite
+    const merged = existing
+      ? {
+          ...article,            // new fields (preview, title, etc.)
+          ...existing,           // keep full content if present
+          hasFullContent:
+            existing.hasFullContent || article.hasFullContent,
+          bodyHtml:
+            existing.bodyHtml || article.bodyHtml,
+        }
+      : article;
+
+    store.put(merged);
+  }
+
+  await tx.done;
 }
+
 
 export async function clearArticles() {
   const db = await dbPromise;
@@ -28,6 +44,11 @@ export async function clearArticles() {
 export function isArticleCacheValid(article) {
   return Date.now() - article.cachedAt < CACHE_TTL;
 }
+
+export function isFullyCached(article) {
+  return article.hasFullContent === true && !!article.bodyHtml;
+}
+
 
 export async function loadArticlesOfflineFirst(isOnline) {
     const cached=await getAllArticles();
@@ -91,4 +112,9 @@ export async function refreshArticles() {
   const fresh = await fetchArticles();
   await saveArticles(fresh);
   return fresh;
+}
+
+export async function getOfflineReadableArticles() {
+  const all = await getAllArticles();
+  return all.filter(isFullyCached);
 }

@@ -28,6 +28,7 @@ export async function fetchFullArticle(id) {
   return {
     id: article.id,
     title: article.title,
+    preview: article.description,
     bodyHtml: article.body_html, // ✅ NOW IT EXISTS
     author: article.user?.name || "Unknown",
     publishedAt: article.published_at,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   getLastUpdatedTime,
+  getOfflineReadableArticles,
   isCacheStale,
   loadArticlesOfflineFirst,
   searchByTitle,
@@ -19,9 +20,17 @@ export default function App() {
 
   const online = useOnlineStatus();
 
+  async function loadVisibleArticles(online) {
+    if (online) {
+      return loadArticlesOfflineFirst(true);
+    } else {
+      return getOfflineReadableArticles();
+    }
+  }
+
   useEffect(() => {
     async function load() {
-      const data = await loadArticlesOfflineFirst(online);
+      const data = await loadVisibleArticles(online);
       setArticles(data);
     }
     load();
@@ -37,13 +46,16 @@ export default function App() {
     setQuery(value);
 
     if (!value) {
-      const data = await loadArticlesOfflineFirst(online);
+      const data = await loadVisibleArticles(online);
       setArticles(data);
       return;
     }
 
     const results = await searchByTitle(value);
-    setArticles(results);
+
+    setArticles(
+      online ? results : results.filter((a) => a.hasFullContent && a.bodyHtml)
+    );
   }
 
   async function handleRefresh() {
@@ -83,25 +95,21 @@ export default function App() {
 
         {/* FULL BLOG CONTENT WITH IMAGES */}
         {article.bodyHtml ? (
-                  <div
-                    className="prose prose-slate max-w-none"
-                    dangerouslySetInnerHTML={{ __html: article.bodyHtml }}
-                  />
-                ) : (
-                  <p className="text-slate-500">
-                    Full content not available offline. Go online once to cache
-                    this article.
-                  </p>
-                )}
+          <div
+            className="prose prose-slate max-w-none"
+            dangerouslySetInnerHTML={{ __html: article.bodyHtml }}
+          />
+        ) : (
+          <p className="text-slate-500">
+            Full content not available offline. Go online once to cache this
+            article.
+          </p>
+        )}
 
-                {article.coverImage && (
-                  <img
-                    src={article.coverImage}
-                    alt=""
-                    className="mb-3 rounded-lg"
-                  />
-                )}
-                </div>
+        {article.coverImage && (
+          <img src={article.coverImage} alt="" className="mb-3 rounded-lg" />
+        )}
+      </div>
     );
   }
 
@@ -175,6 +183,12 @@ export default function App() {
               {!online && (
                 <p className="mt-1 text-xs">Go online once to cache content</p>
               )}
+            </div>
+          )}
+
+          {!online && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Showing articles available for offline reading
             </div>
           )}
 
