@@ -48,3 +48,26 @@ export async function loadArticlesOfflineFirst(isOnline) {
 
     return finalArticles;
 }
+
+export async function searchByTitle(query) {
+  const db = await dbPromise;
+  const tx = db.transaction('articles', 'readonly');
+  const index = tx.store.index('title');
+
+  const results = [];
+  let cursor = await index.openCursor();
+
+  while (cursor) {
+    if (cursor.key.toLowerCase().includes(query.toLowerCase())) {
+      results.push(cursor.value);
+    }
+    cursor = await cursor.continue();
+  }
+
+  return results;
+}
+
+export async function searchByAuthor(author) {
+  const db = await dbPromise;
+  return db.getAllFromIndex('articles', 'author', author);
+}
